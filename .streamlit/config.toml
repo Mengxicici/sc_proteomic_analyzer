@@ -1,0 +1,14 @@
+[theme]
+base="dark"
+#primaryColor="lightblue"
+#textColor="#262730"
+font="sans serif"
+
+[server]
+maxUploadSize = 1024
+
+# Max size, in megabytes, of messages that can be sent via the WebSocket connection.
+# Default: 200
+maxMessageSize = 1024
+
+fileWatcherType = "none"
