@@ -367,18 +367,18 @@ if 'df' in st.session_state:
     st.subheader('Data Preprocessing')
 
     
-    N_MD="""
-    Please Note:face_with_raised_eyebrow:
-    - Normalization is a mandatory step before performing any downstream analysis. Further analysis will only show after Normalization. Please select the normalization method and click on "Apply Normalization" to proceed.
-    """
-    st.warning(N_MD, icon="⚠️")
+    # N_MD="""
+    # Please Note:face_with_raised_eyebrow:
+    # - Normalization is a mandatory step before performing any downstream analysis. Further analysis will only show after Normalization. Please select the normalization method and click on "Apply Normalization" to proceed.
+    # """
+    # st.warning(N_MD, icon="⚠️")
    
-
-    if st.checkbox('Normalization'):
-        st.write('Normalization settings')
-        if 'norm' not in st.session_state or st.button('Reset data'):
+    if 'norm' not in st.session_state or st.button('Reset data'):
             raw=st.session_state['adata'].copy()
             st.session_state['norm'] = raw
+
+    if st.checkbox('Normalization?'):
+        st.write('Normalization settings')
 
         batch_key = st.selectbox('Select Batch Key', options=list(adata.obs.columns))
         normalizer = ProteomicNormalizer(st.session_state['norm'], batch_key=batch_key)
@@ -402,159 +402,159 @@ if 'df' in st.session_state:
             st.pyplot(fig)
 
             
-        st.subheader('Dimensionality Reduction and Clustering')
-        if st.checkbox('Show PCA'):
+    st.subheader('Dimensionality Reduction and Clustering')
+    if st.checkbox('Show PCA'):
 
-            # Compute PCA on the AnnData object
-            sc.tl.pca(st.session_state['norm'])
+        # Compute PCA on the AnnData object
+        sc.tl.pca(st.session_state['norm'])
 
-            # Allow the user to select which metadata columns to color the PCA plot by
-            colors = st.multiselect('Select colors for PCA', options=['Phenotype', 'Timepoint', 'Response', 'exp_group', 'SampleID', 'Patient', 'Area'], default=['Phenotype'])
+        # Allow the user to select which metadata columns to color the PCA plot by
+        colors = st.multiselect('Select colors for PCA', options=['Phenotype', 'Timepoint', 'Response', 'exp_group', 'SampleID', 'Patient', 'Area'], default=['Phenotype'])
 
+        if colors:
+            # Create a figure for each selected color with adequate sizing
+            fig, axs = plt.subplots(len(colors), 1, figsize=(6, 6 * len(colors)))
+            
+            # If only one color is selected, axs will not be an array but a single AxesSubplot
+            if len(colors) == 1:
+                axs = [axs]  # Make it a list for consistent indexing below
+            
+            # Plot PCA for each color in its subplot
+            for i, color in enumerate(colors):
+                sc.pl.pca(st.session_state['norm'], color=color, ax=axs[i], show=False)
+                axs[i].set_title(f'PCA colored by {color}')
+            
+            # Show the plot in Streamlit
+            st.pyplot(fig)
+        else:
+            st.write("Please select at least one attribute to color the PCA plot.")
+
+
+    if  st.checkbox('show UMAP'):
+        resolution=st.number_input('Number of resolution', 0.2, 2.0, 0.6)
+        if st.checkbox('Make UMAP'):
+            
+            sc.pp.neighbors(st.session_state['norm'])
+            sc.tl.umap(st.session_state['norm'])
+            
+            #sc.tl.leiden(st.session_state['norm'],resolution)
+
+            colors = st.multiselect('Select colors for leiden clusters', list(st.session_state['norm'].obs.columns), default=['Phenotype'])
             if colors:
-                # Create a figure for each selected color with adequate sizing
-                fig, axs = plt.subplots(len(colors), 1, figsize=(6, 6 * len(colors)))
-                
-                # If only one color is selected, axs will not be an array but a single AxesSubplot
-                if len(colors) == 1:
-                    axs = [axs]  # Make it a list for consistent indexing below
-                
-                # Plot PCA for each color in its subplot
-                for i, color in enumerate(colors):
-                    sc.pl.pca(st.session_state['norm'], color=color, ax=axs[i], show=False)
-                    axs[i].set_title(f'PCA colored by {color}')
-                
-                # Show the plot in Streamlit
-                st.pyplot(fig)
-            else:
-                st.write("Please select at least one attribute to color the PCA plot.")
+                if st.button('Show UMAP'):
+                    # Create a figure for each selected color with adequate sizing
+                    fig, axs = plt.subplots(len(colors), 1, figsize=(6, 6 * len(colors)))
+                    
+                    # If only one color is selected, axs will not be an array but a single AxesSubplot
+                    if len(colors) == 1:
+                        axs = [axs]  # Make it a list for consistent indexing below
+                    
+                    # Plot PCA for each color in its subplot
+                    for i, color in enumerate(colors):
+                        sc.pl.umap(st.session_state['norm'], color=color, ax=axs[i], show=False)
+                        axs[i].set_title(f'UMAP colored by {color}')
+                    
+                    # Show the plot in Streamlit
+                    st.pyplot(fig)
 
-
-        if  st.checkbox('show UMAP'):
-            resolution=st.number_input('Number of resolution', 0.2, 2.0, 0.6)
-            if st.checkbox('Make UMAP'):
-                
-                sc.pp.neighbors(st.session_state['norm'])
-                sc.tl.umap(st.session_state['norm'])
-                
-                #sc.tl.leiden(st.session_state['norm'],resolution)
-
-                colors = st.multiselect('Select colors for leiden clusters', list(st.session_state['norm'].obs.columns), default=['Phenotype'])
-                if colors:
-                    if st.button('Show UMAP'):
-                        # Create a figure for each selected color with adequate sizing
-                        fig, axs = plt.subplots(len(colors), 1, figsize=(6, 6 * len(colors)))
-                        
-                        # If only one color is selected, axs will not be an array but a single AxesSubplot
-                        if len(colors) == 1:
-                            axs = [axs]  # Make it a list for consistent indexing below
-                        
-                        # Plot PCA for each color in its subplot
-                        for i, color in enumerate(colors):
-                            sc.pl.umap(st.session_state['norm'], color=color, ax=axs[i], show=False)
-                            axs[i].set_title(f'UMAP colored by {color}')
-                        
-                        # Show the plot in Streamlit
-                        st.pyplot(fig)
-
-                
+            
 
 
 
+    
+    # Visualization options
+    st.subheader('Data Visualization')
+    df=make_df_from_anndata(st.session_state['norm'])
+    if  st.checkbox('start data visualization'):
+        plot_type = st.selectbox('Select Plot Type', ['Histogram', 'Boxplot', 'Scatterplot'])
+        selected_protein = st.selectbox('Select Protein', df.columns[:proteins])
+    
+        if plot_type == 'Histogram':
+            fig, ax = plt.subplots()
+            sns.histplot(df[selected_protein], kde=True, ax=ax)
+            st.pyplot(fig)
+
+        elif plot_type == 'Boxplot':
+            phenotype_to_compare = st.selectbox('Select Phenotype for Boxplot', df['Phenotype'].unique())
+            fig, ax = plt.subplots()
+            sns.boxplot(data=df, x='Phenotype', y=selected_protein, ax=ax)
+            st.pyplot(fig)
+
+        elif plot_type == 'Scatterplot':
+            x_axis = st.selectbox('Choose X-axis for Scatterplot', df.columns[:proteins], index=0)
+            y_axis = st.selectbox('Choose Y-axis for Scatterplot', df.columns[:proteins], index=1)
+            fig, ax = plt.subplots()
+            sns.scatterplot(data=df, x=x_axis, y=y_axis, ax=ax)
+            st.pyplot(fig)
         
-        # Visualization options
-        st.subheader('Data Visualization')
+    from pygwalker.api.streamlit import StreamlitRenderer
+
+
+
+
+    st.subheader('Data exploration')
+    # should cache your pygwalker renderer, if you don't want your memory to explode
+    if st.button('Start exploration'):
+        @st.cache_resource
+        def get_pyg_renderer() -> "StreamlitRenderer":
+            df = make_df_from_anndata(st.session_state['norm'])
+            # If you want to use feature of saving chart config, set `spec_io_mode="rw"`
+            return StreamlitRenderer(df, spec="./gw_config.json", spec_io_mode="rw")
+
+
+        renderer = get_pyg_renderer()
+
+        renderer.explorer()
+
+
+    st.subheader('statistical tests')
+    if  st.checkbox('Perform Wilcoxon Test'):
         df=make_df_from_anndata(st.session_state['norm'])
-        if  st.checkbox('start data visualization'):
-            plot_type = st.selectbox('Select Plot Type', ['Histogram', 'Boxplot', 'Scatterplot'])
-            selected_protein = st.selectbox('Select Protein', df.columns[:proteins])
+
+        group_column = st.selectbox('Select Group Column', df.columns[-8:])
+        group_values = df[group_column].dropna().unique()
+        group1 = st.selectbox('Select Group 1', group_values)
+        group2 = st.selectbox('Select Group 2', group_values)
+        comparison_variable = st.selectbox('Select Variable for Comparison', df.columns[:proteins])
         
-            if plot_type == 'Histogram':
-                fig, ax = plt.subplots()
-                sns.histplot(df[selected_protein], kde=True, ax=ax)
-                st.pyplot(fig)
+        def perform_test(data, group_column, group1, group2, variable):
+            group1_data = data[data[group_column] == group1][variable]
+            group2_data = data[data[group_column] == group2][variable]
+            stat, p_value = mannwhitneyu(group1_data, group2_data, alternative='two-sided')
+            return stat, p_value
 
-            elif plot_type == 'Boxplot':
-                phenotype_to_compare = st.selectbox('Select Phenotype for Boxplot', df['Phenotype'].unique())
-                fig, ax = plt.subplots()
-                sns.boxplot(data=df, x='Phenotype', y=selected_protein, ax=ax)
-                st.pyplot(fig)
+        if st.button('Perform Wilcoxon Test'):
+            stat, p_value = perform_test(df, group_column, group1, group2, comparison_variable)
+            st.write(f"Statistic: {stat}, P-value: {p_value}")
 
-            elif plot_type == 'Scatterplot':
-                x_axis = st.selectbox('Choose X-axis for Scatterplot', df.columns[:proteins], index=0)
-                y_axis = st.selectbox('Choose Y-axis for Scatterplot', df.columns[:proteins], index=1)
-                fig, ax = plt.subplots()
-                sns.scatterplot(data=df, x=x_axis, y=y_axis, ax=ax)
-                st.pyplot(fig)
-            
-        from pygwalker.api.streamlit import StreamlitRenderer
+        if st.button('Show Comparison Plot'):
+            fig, ax = plt.subplots(figsize=(10, 10))
+            # sns.boxplot(x=group_column, y=comparison_variable, data=df[df[group_column].isin([group1, group2])])
+            # sns.swarmplot(x=group_column, y=comparison_variable, data=df[df[group_column].isin([group1, group2])].sample(frac=0.05), color='.25')
+            # Define a color palette that matches the number of groups
+            palette = sns.color_palette("viridis", n_colors=len(df[group_column].unique()))
+            filtered_df = df[df[group_column].isin([group1, group2])]
+            # Create a boxplot
+            boxplot = sns.boxplot(
+                x=group_column,
+                y=comparison_variable,
+                data=filtered_df,
+                palette=palette,  # Apply the color palette
+                width=0.5,  # Control the width of the boxes for better readability
+                showfliers=False  # Do not show outliers to avoid clutter
+            )
 
-
-
-
-        st.subheader('Data exploration')
-        # should cache your pygwalker renderer, if you don't want your memory to explode
-        if st.button('Start exploration'):
-            @st.cache_resource
-            def get_pyg_renderer() -> "StreamlitRenderer":
-                df = make_df_from_anndata(st.session_state['norm'])
-                # If you want to use feature of saving chart config, set `spec_io_mode="rw"`
-                return StreamlitRenderer(df, spec="./gw_config.json", spec_io_mode="rw")
-
-
-            renderer = get_pyg_renderer()
-
-            renderer.explorer()
-
-
-        st.subheader('statistical tests')
-        if  st.checkbox('Perform Wilcoxon Test'):
-            df=make_df_from_anndata(st.session_state['norm'])
-
-            group_column = st.selectbox('Select Group Column', df.columns[-8:])
-            group_values = df[group_column].dropna().unique()
-            group1 = st.selectbox('Select Group 1', group_values)
-            group2 = st.selectbox('Select Group 2', group_values)
-            comparison_variable = st.selectbox('Select Variable for Comparison', df.columns[:proteins])
-            
-            def perform_test(data, group_column, group1, group2, variable):
-                group1_data = data[data[group_column] == group1][variable]
-                group2_data = data[data[group_column] == group2][variable]
-                stat, p_value = mannwhitneyu(group1_data, group2_data, alternative='two-sided')
-                return stat, p_value
-
-            if st.button('Perform Wilcoxon Test'):
-                stat, p_value = perform_test(df, group_column, group1, group2, comparison_variable)
-                st.write(f"Statistic: {stat}, P-value: {p_value}")
-
-            if st.button('Show Comparison Plot'):
-                fig, ax = plt.subplots(figsize=(10, 10))
-                # sns.boxplot(x=group_column, y=comparison_variable, data=df[df[group_column].isin([group1, group2])])
-                # sns.swarmplot(x=group_column, y=comparison_variable, data=df[df[group_column].isin([group1, group2])].sample(frac=0.05), color='.25')
-                # Define a color palette that matches the number of groups
-                palette = sns.color_palette("viridis", n_colors=len(df[group_column].unique()))
-                filtered_df = df[df[group_column].isin([group1, group2])]
-                # Create a boxplot
-                boxplot = sns.boxplot(
-                    x=group_column,
-                    y=comparison_variable,
-                    data=filtered_df,
-                    palette=palette,  # Apply the color palette
-                    width=0.5,  # Control the width of the boxes for better readability
-                    showfliers=False  # Do not show outliers to avoid clutter
+            # Overlay a swarmplot with matching colors
+            swarmplot = sns.swarmplot(
+                x=group_column,
+                y=comparison_variable,
+                data=filtered_df.sample(frac=0.05),  # Sample the data to make the swarm plot manageable
+                palette=palette,  # Use the same palette for consistency
+                dodge=False,  # Ensure swarm dots do not overlap the boxplots
+                alpha=0.7  # Set transparency to make the plot less cluttered
                 )
-
-                # Overlay a swarmplot with matching colors
-                swarmplot = sns.swarmplot(
-                    x=group_column,
-                    y=comparison_variable,
-                    data=filtered_df.sample(frac=0.05),  # Sample the data to make the swarm plot manageable
-                    palette=palette,  # Use the same palette for consistency
-                    dodge=False,  # Ensure swarm dots do not overlap the boxplots
-                    alpha=0.7  # Set transparency to make the plot less cluttered
-                    )
-                plt.title('Comparison of Selected Groups')
-                st.pyplot(fig)
+            plt.title('Comparison of Selected Groups')
+            st.pyplot(fig)
     
 # Additional functionalities
 if 'df' in st.session_state and st.button('Save data'):
