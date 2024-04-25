@@ -374,8 +374,8 @@ if 'df' in st.session_state:
     # st.warning(N_MD, icon="⚠️")
    
     if 'norm' not in st.session_state or st.button('Reset data'):
-            raw=st.session_state['adata'].copy()
-            st.session_state['norm'] = raw
+            
+        st.session_state['norm'] = st.session_state['adata'].copy()
 
     if st.checkbox('Normalization?'):
         st.write('Normalization settings')
