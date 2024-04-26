@@ -6,7 +6,7 @@ font="sans serif"
 
 [server]
 maxUploadSize = 1024
-headless = true
+#headless = true
 
 # Max size, in megabytes, of messages that can be sent via the WebSocket connection.
 # Default: 200
