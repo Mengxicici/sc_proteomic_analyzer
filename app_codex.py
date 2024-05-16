@@ -78,7 +78,7 @@ def make_df_from_anndata(adata,save=False):
     # Save to CSV file
         combined_df.to_csv(save+'combined_df_data.csv')
 
-    print("Data combined and saved successfully.")
+        print("Data combined and saved successfully.")
     return combined_df
 
 
@@ -227,7 +227,7 @@ def significance_stars(p):
     else:
         return 'n.s.'  # not significant
 
-def shapiro_whitneyU_plot_4in1(adata_, tarObs1='Phenotype', tarPhenotype='CAF', tarMarker='Vimentin', adata_raw=False,save=False,figsize=(6,6)):
+def shapiro_whitneyU_plot_4in1_df_version(adata_, tarObs1='Phenotype', tarPhenotype='CAF', tarMarker='Vimentin',log=False, adata_raw=False,save=False,figsize=(6,6)):
     
     # Set style
     tarObs = 'exp_group'
@@ -243,26 +243,29 @@ def shapiro_whitneyU_plot_4in1(adata_, tarObs1='Phenotype', tarPhenotype='CAF', 
     sns.set_style("ticks", {"axes.facecolor": "#EAEAF2"})
     vintage_palette = sns.color_palette("husl", 3)
 
-    # Prepare data
-    data = pd.DataFrame({
-        'Marker': adata.obs_vector(tarMarker),
-        'SampleID': adata.obs['SampleID'],
-        'Group': adata.obs[tarObs],
-        'Phenotype': adata.obs[tarObs1],
-        'prepost':adata.obs['prepost'], 
-        'response':adata.obs['response'],
-        'patient': adata.obs['patient']
-    })
+    # Prepare data : anndata version
+    # data = pd.DataFrame({
+    #     'Marker': adata.obs_vector(tarMarker),
+    #     'SampleID': adata.obs['SampleID'],
+    #     'Group': adata.obs[tarObs],
+    #     'Phenotype': adata.obs[tarObs1],
+    #     'prepost':adata.obs['prepost'], 
+    #     'response':adata.obs['response'],
+    #     'patient': adata.obs['patient']
+    # })
+    # Prepare data : dataframe version
+    data = adata_[[tarMarker, 'SampleID', tarObs, tarObs1, 'prepost', 'response', 'patient']].copy()
+    data.columns = ['Marker', 'SampleID', 'Group', 'Phenotype', 'prepost', 'response', 'patient']
 
     # Filter data
     if tarPhenotype:
         filtered_data = data[data['Phenotype'] == tarPhenotype]
     else:
         filtered_data = data
-
+    # print(filtered_data.head())
     # Find the highest data point across all subplots
     overall_max = max(filtered_data['Marker'])
-    print(filtered_data.head())
+   
     # Define offsets for the bracket and star (relative to the overall highest data point)
     offset_bracket = overall_max * 0.1
     offset_star = overall_max * 0.15
@@ -271,7 +274,9 @@ def shapiro_whitneyU_plot_4in1(adata_, tarObs1='Phenotype', tarPhenotype='CAF', 
     data3=filtered_data[filtered_data['Group']=='T1_PR']['Marker']
     data4=filtered_data[filtered_data['Group']=='T2_PR']['Marker']
 
-
+    # print(data1.head())
+    # print(data2.head())
+    
     plt.hist(data1, bins=30, alpha=0.5, label='T1_CR')
     plt.hist(data2, bins=30, alpha=0.5, label='T2_CR')
     plt.hist(data3, bins=30, alpha=0.5, label='T1_PR')
@@ -290,9 +295,12 @@ def shapiro_whitneyU_plot_4in1(adata_, tarObs1='Phenotype', tarPhenotype='CAF', 
     if save:
         plt.savefig(save+f'histogram_of_{tarMarker}_on_{tarPhenotype}.pdf')  # You can specify the format by the extension (e.g., pdf, png, jpg)
 
-    # Show the plot if you want to see it in addition to saving
-    plt.show()
+    if log:
+        plt.yscale('log')
 
+    # Show the plot if you want to see it in addition to saving
+    #plt.show()
+    st.pyplot(plt.gcf())
     # Clear the plotting cache
     plt.clf()
 
@@ -314,14 +322,16 @@ def shapiro_whitneyU_plot_4in1(adata_, tarObs1='Phenotype', tarPhenotype='CAF', 
 
     # Move the legend outside of the plot on the right
     ax.legend(title='Pre/Post', bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
-
+    if log:
+        plt.yscale('log')
     # Save the plot if the save flag is True
     if save:
         plt.savefig(save + f'all_samples_boxenplot_of_{tarMarker}_on_{tarPhenotype}.pdf', bbox_inches='tight')
-    plt.show()  # Display the plot
+    # plt.show()  # Display the plot
+    st.pyplot(plt.gcf())
     plt.clf()   # Clear the figure to free up memory
     
-    
+
     
     # Perform the U-tests
     _, p_value_12 = stats.mannwhitneyu(data1, data2)
@@ -397,10 +407,12 @@ def shapiro_whitneyU_plot_4in1(adata_, tarObs1='Phenotype', tarPhenotype='CAF', 
     #plt.yscale('log')
     plt.title(f'{tarMarker} comparisions between {tarObs} on {tarPhenotype} ')
     plt.tight_layout()
-    
+    if log:
+        plt.set_yscale('log')
     if save:
         plt.savefig(save+f'{tarMarker}_comparisions_between_{tarObs}_on_{tarPhenotype}.pdf')
-    plt.show()
+    #plt.show()
+    st.pyplot(plt.gcf())
 
 
 # Adjust the width of the Streamlit page
@@ -486,7 +498,7 @@ if uploaded_file is not None:
     adata.obs['Phenotype'] = adata.obs[celltypes_col]
     adata.obs['Timepoint'] = adata.obs[timepoint_col]
     adata.obs['Response'] = adata.obs[response_col]
-    adata.obs['exp_group'] = adata.obs[response_col] + '_' + adata.obs[timepoint_col]
+    adata.obs['exp_group'] = adata.obs[timepoint_col]+ '_' + adata.obs[response_col] 
     proteins = adata.X.shape[1]
     if st.sidebar.button('Process Data'):
         # Handling subsampling and storing the data in session state
@@ -674,13 +686,15 @@ if 'df' in st.session_state:
         
         st.title('Data Analysis Visualization Tool')
 
-        adata_=st.session_state['norm'].copy()
+        adata_df=make_df_from_anndata(st.session_state['norm'].copy())
         
-        tarObs1 = st.selectbox("Select Target Observation 1 (usually the column name of Phenotype like 'Phenotype_TvsN' or 'Phenotype')", adata_.obs.columns)
-        phenotypes = adata_.obs[tarObs1].unique()
+        tarObs1 = st.selectbox("Select Target Observation 1 (usually the column name of Phenotype like 'Phenotype_TvsN' or 'Phenotype')", adata_df.columns)
+        phenotypes = adata_df[tarObs1].unique()
         tarPhenotype = st.selectbox("Select Target Phenotype (will calculate the marker expression only on these cells, or shartest distance from which type of cell (eg: CD8_Tcell))", phenotypes)
-        markers = adata_.var_names  
+        markers = adata_df.columns 
         tarMarker = st.selectbox("Select Target Marker (eg:'Ki67') or distance to which specific type of cells (eg: Treg) ", markers)
+        log_normalize_option = st.checkbox("Log normalize data?")
+        
         #adata_raw_option = st.checkbox("Use raw data format")
         
         # Save functionality
@@ -689,11 +703,11 @@ if 'df' in st.session_state:
         
         # Button to generate plots
         if st.button('Generate Plots'):
-            st.write(adata_)
+            #st.write(adata_df.head())
             with st.spinner('Generating plots...'):
-                shapiro_whitneyU_plot_4in1(adata_, tarObs1, tarPhenotype, tarMarker, adata_raw=None, save=save_path)
+                shapiro_whitneyU_plot_4in1_df_version(adata_df, tarObs1, tarPhenotype, tarMarker, adata_raw=None, save=save_path,log=log_normalize_option)
                 st.success('Done!')
-                st.balloons()
+                st.snowflake('snowflake')
 
         # group_column = st.selectbox('Select Group Column', df.columns[-8:])
         # group_values = df[group_column].dropna().unique()
