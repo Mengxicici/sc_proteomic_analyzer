@@ -51,62 +51,33 @@ def save_anndata(adata,outdir,name):
 from scipy.stats import gamma
 import scipy.stats as stats
 
-def pygwakler(raw, save=False):
-    # Extract the expression data
-    expression_data = pd.DataFrame(raw.X)
-    expression_data.columns = [f"Protein_{i+1}" for i in range(raw.X.shape[1])]
-    expression_data.reset_index(drop=True, inplace=True)
-    raw.obs.reset_index(drop=True, inplace=True)
-    # Extract the metadata
-    metadata = raw.obs
+def make_df_from_anndata(adata,save=False):
 
-    # Save the data to a CSV file
-    combined_data = pd.concat([expression_data, metadata], axis=1)
+    # Convert the expression data to a DataFrame
+    expr_df = pd.DataFrame(adata.X, index=adata.obs.index, columns=adata.var_names)
+
+    # The observation metadata is already a DataFrame, but let's ensure it aligns
+    obs_df = adata.obs
+
     
-    print(combined_data.head(),combined_data.shape)
+    if isinstance(adata.uns['dist_by_rois'], pd.DataFrame):
+        dist_df = adata.uns['dist_by_rois']
+    else:
+        dist_df = pd.DataFrame(adata.uns['dist_by_rois'], index=adata.obs.index)
+
+    # Ensure the indices align; this step is crucial as misaligned indices can lead to incorrect data merging
+    expr_df = expr_df.reindex(obs_df.index)
+    dist_df = dist_df.reindex(obs_df.index)
+
+    # Combine all data into one DataFrame
+    combined_df = pd.concat([expr_df, obs_df, dist_df], axis=1)
     if save:
-        combined_data.to_csv('simulated_data.csv', index=False)
+    # Save to CSV file
+        combined_df.to_csv(save+'combined_df_data.csv')
 
-    walker = pyg.walk(combined_data)
-    return combined_data
+    print("Data combined and saved successfully.")
+    return combined_df
 
-def make_df_from_anndata__(raw, save=False):
-    # Extract the expression data
-    expression_data = pd.DataFrame(raw.X)
-    expression_data.columns = [raw.var_names[i] for i in range(raw.X.shape[1])]
-    expression_data.reset_index(drop=True, inplace=True)
-    raw.obs.reset_index(drop=True, inplace=True)
-    # Extract the metadata
-    metadata = raw.obs
-
-    # Save the data to a CSV file
-    combined_data = pd.concat([expression_data, metadata], axis=1)
-    
-    print(combined_data.head(),combined_data.shape)
-    if save:
-        combined_data.to_csv('df_data.csv', index=False)
-
-    return combined_data
-
-def make_df_from_anndata(raw, save=False):
-    import pandas as pd
-    # Extract the expression data
-    expression_data = pd.DataFrame(raw.X if raw.X is not None else [])
-    expression_data.columns = raw.var_names.tolist() if raw.var_names is not None else []
-    expression_data.reset_index(drop=True, inplace=True)
-
-    # Extract the metadata
-    metadata = raw.obs.copy()
-    metadata.reset_index(drop=True, inplace=True)
-
-    # Combine the data
-    combined_data = pd.concat([expression_data, metadata], axis=1)
-
-    print(combined_data.head(), combined_data.shape)
-    if save:
-        combined_data.to_csv('df_data.csv', index=False)
-
-    return combined_data
 
 
 class ProteomicNormalizer:
@@ -331,7 +302,7 @@ if uploaded_file is not None:
                 st.session_state['adata'] = adata
             else:
                 st.session_state['adata'] = get_subsample(adata)
-
+            st.write(adata)
             st.session_state['df'] = make_df_from_anndata(st.session_state['adata'])
     if st.button('clear data'):
         st.session_state.clear()
@@ -369,7 +340,7 @@ if 'df' in st.session_state:
     
     N_MD="""
     Please Note:face_with_raised_eyebrow:
-    - Normalization is a mandatory step before performing any downstream analysis. Further analysis will only show after Normalization. Please select the normalization method and click on "Apply Normalization" to proceed.
+    - Normalization is a mandatory step for raw data before performing any downstream analysis. Further analysis will only show after Normalization. Please select the normalization method and click on "Apply Normalization" to proceed.
     """
     st.warning(N_MD, icon="⚠️")
    
@@ -456,10 +427,6 @@ if 'df' in st.session_state:
                         
                         # Show the plot in Streamlit
                         st.pyplot(fig)
-
-                
-
-
 
         
         # Visualization options
