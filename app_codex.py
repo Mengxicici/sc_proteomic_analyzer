@@ -211,6 +211,196 @@ def make_violin_matrix_dot_plot(adata, groupby, categories_order=None,dpi=300):
 #     fig = make_violin_matrix_dot_plot(adata, groupby=groupby)
 #     st.pyplot(fig)
 
+import seaborn as sns
+import matplotlib.pyplot as plt
+import numpy as np
+import scipy.stats as stats
+
+# Function to determine significance stars based on p-value
+def significance_stars(p):
+    if p < 0.001:
+        return '***'
+    elif p < 0.01:
+        return '**'
+    elif p < 0.05:
+        return '*'
+    else:
+        return 'n.s.'  # not significant
+
+def shapiro_whitneyU_plot_4in1(adata_, tarObs1='Phenotype', tarPhenotype='CAF', tarMarker='Vimentin', adata_raw=False,save=False,figsize=(6,6)):
+    
+    # Set style
+    tarObs = 'exp_group'
+    
+    if adata_raw:
+        adata_raw.obs[tarObs] = adata_.obs[tarObs]
+        
+        adata = adata_raw
+    else:
+        adata = adata_    
+    
+    sns.set_context("notebook", font_scale=1.2, rc={"figure.dpi": 100, "savefig.dpi": 100})
+    sns.set_style("ticks", {"axes.facecolor": "#EAEAF2"})
+    vintage_palette = sns.color_palette("husl", 3)
+
+    # Prepare data
+    data = pd.DataFrame({
+        'Marker': adata.obs_vector(tarMarker),
+        'SampleID': adata.obs['SampleID'],
+        'Group': adata.obs[tarObs],
+        'Phenotype': adata.obs[tarObs1],
+        'prepost':adata.obs['prepost'], 
+        'response':adata.obs['response'],
+        'patient': adata.obs['patient']
+    })
+
+    # Filter data
+    if tarPhenotype:
+        filtered_data = data[data['Phenotype'] == tarPhenotype]
+    else:
+        filtered_data = data
+
+    # Find the highest data point across all subplots
+    overall_max = max(filtered_data['Marker'])
+    print(filtered_data.head())
+    # Define offsets for the bracket and star (relative to the overall highest data point)
+    offset_bracket = overall_max * 0.1
+    offset_star = overall_max * 0.15
+    data1=filtered_data[filtered_data['Group']=='T1_CR']['Marker']
+    data2=filtered_data[filtered_data['Group']=='T2_CR']['Marker']
+    data3=filtered_data[filtered_data['Group']=='T1_PR']['Marker']
+    data4=filtered_data[filtered_data['Group']=='T2_PR']['Marker']
+
+
+    plt.hist(data1, bins=30, alpha=0.5, label='T1_CR')
+    plt.hist(data2, bins=30, alpha=0.5, label='T2_CR')
+    plt.hist(data3, bins=30, alpha=0.5, label='T1_PR')
+    plt.hist(data4, bins=30, alpha=0.5, label='T2_PR')
+
+    # Add labels and title if needed
+    plt.xlabel('Value')
+    plt.ylabel('Frequency')
+    plt.title('Histogram Comparison')
+    plt.legend()
+
+       
+
+
+    # Save the figure
+    if save:
+        plt.savefig(save+f'histogram_of_{tarMarker}_on_{tarPhenotype}.pdf')  # You can specify the format by the extension (e.g., pdf, png, jpg)
+
+    # Show the plot if you want to see it in addition to saving
+    plt.show()
+
+    # Clear the plotting cache
+    plt.clf()
+
+    plt.figure(figsize=(10, 6))  # You can adjust the dimensions as needed
+    filtered_data = filtered_data.sort_values(by=['response', 'prepost', 'patient'])
+    # Create the boxenplot
+    ax = sns.boxenplot(
+        x='SampleID',
+        y='Marker',
+        hue='prepost',
+        data=filtered_data,
+        dodge=False,
+        width=0.8,
+        palette='pastel'
+    )
+
+    # Rotate x-tick labels to make them vertical
+    plt.xticks(rotation=90)  # Rotates the labels on the x-axis to vertical
+
+    # Move the legend outside of the plot on the right
+    ax.legend(title='Pre/Post', bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+
+    # Save the plot if the save flag is True
+    if save:
+        plt.savefig(save + f'all_samples_boxenplot_of_{tarMarker}_on_{tarPhenotype}.pdf', bbox_inches='tight')
+    plt.show()  # Display the plot
+    plt.clf()   # Clear the figure to free up memory
+    
+    
+    
+    # Perform the U-tests
+    _, p_value_12 = stats.mannwhitneyu(data1, data2)
+    _, p_value_34 = stats.mannwhitneyu(data3, data4)
+    _, p_value_13 = stats.mannwhitneyu(data1, data3)
+    _, p_value_24 = stats.mannwhitneyu(data2, data4)
+    
+    # Set up the figure
+    
+    # sns.boxenplot(data=[data1, data2, data3, data4], 
+    #               #notch=True,
+    #               dodge=True,
+    #               width=0.5)
+
+    # Create a long-form DataFrame
+    groups = ['T1_CR', 'T2_CR', 'T1_PR', 'T2_PR']
+    all_data = pd.concat([
+        pd.DataFrame({'Marker': data1, 'Group': 'T1_CR','response':'CR','timepoint':'T1'}),
+        pd.DataFrame({'Marker': data2, 'Group': 'T2_CR','response':'CR','timepoint':'T2'}),
+        pd.DataFrame({'Marker': data3, 'Group': 'T1_PR','response':'PR','timepoint':'T1'}),
+        pd.DataFrame({'Marker': data4, 'Group': 'T2_PR','response':'PR','timepoint':'T2'})
+    ])
+
+    # Now, use seaborn to plot the boxenplot
+    sns.set_context("notebook", font_scale=1.2, rc={"figure.dpi": 300, "savefig.dpi": 100})
+    sns.set_style("ticks", {"axes.facecolor": "#EAEAF2"})
+    plt.figure(figsize=figsize)
+   
+    sns.boxenplot(x='Group', y='Marker', hue='timepoint', data=all_data, dodge=False, width=0.8,palette='pastel')
+    plt.legend(title='Timepoint', loc='center left', bbox_to_anchor=(1, 0.5))
+    
+    
+    
+    plt.xticks(np.arange(4), ['T1_CR', 'T2_CR', 'T1_PR', 'T2_PR'])
+    median1=np.median(data1)
+    plt.text(0, median1, f'{median1:.3f}', color='darkblue', ha='center', va='bottom')
+    median2=np.median(data2)
+    plt.text(1, median2, f'{median2:.3f}', color='darkblue', ha='center', va='bottom')    
+    median3=np.median(data3)
+    plt.text(2, median3, f'{median3:.3f}', color='darkred', ha='center', va='bottom')   
+    median4=np.median(data4)
+    plt.text(3, median4, f'{median4:.3f}', color='darkred', ha='center', va='bottom')
+    if save:
+        plt.savefig(save+f'histogram_expgroup_comparision_of_{tarMarker}_on_{tarPhenotype}')
+    
+    # Function to draw brackets reaching out to the data with more space and a more prominent bracket shape
+    def draw_bracket(x1, x2, base_y, text, offset=offset_bracket):
+        # Determine the top of the brackets
+        y_top = base_y + offset
+        # Horizontal line (top of the bracket)
+        plt.plot([x1, x2], [y_top, y_top], color='black', lw=1.20)
+        # Vertical lines (sides of the bracket)
+        plt.plot([x1, x1], [base_y, y_top], color='black', lw=1.20)
+        plt.plot([x2, x2], [base_y, y_top], color='black', lw=1.20)
+        # Text for p-value and stars
+        plt.text((x1 + x2) / 2, y_top - 0.1, f'{text}', ha='center', va='bottom', fontsize=16, color='black')
+
+    # Base height from the highest data point
+    max_y = max(data1.max(), data2.max(), data3.max(), data4.max()) + offset_star 
+
+    # Adjustments for each comparison
+    increments = offset_star*3  # vertical space between each bracket level
+
+    # Draw each bracket with the calculated p-values and significance stars
+    draw_bracket(0, 1, max_y, #f'p={p_value_12:.3e} 
+                 f'{significance_stars(p_value_12)}')
+    draw_bracket(2, 3, max_y + increments, #f'p={p_value_34:.3e} 
+                 f'{significance_stars(p_value_34)}')
+    draw_bracket(0, 2, max_y + 1.5 * increments, #f'p={p_value_13:.3e} 
+                 f'{significance_stars(p_value_13)}')
+    draw_bracket(1, 3, max_y + 2 * increments, #f'p={p_value_24:.3e}
+                 f'{significance_stars(p_value_24)}')
+    #plt.yscale('log')
+    plt.title(f'{tarMarker} comparisions between {tarObs} on {tarPhenotype} ')
+    plt.tight_layout()
+    
+    if save:
+        plt.savefig(save+f'{tarMarker}_comparisions_between_{tarObs}_on_{tarPhenotype}.pdf')
+    plt.show()
 
 
 # Adjust the width of the Streamlit page
@@ -352,9 +542,9 @@ if 'df' in st.session_state:
         st.session_state['norm'] = raw
     if st.checkbox('Normalization'):
         st.write('Normalization settings')
-        if 'norm' not in st.session_state or st.button('Reset data'):
-            raw=st.session_state['adata'].copy()
-            st.session_state['norm'] = raw
+        # if 'norm' not in st.session_state or st.button('Reset data'):
+        #     raw=st.session_state['adata'].copy()
+        #     st.session_state['norm'] = raw
 
         batch_key = st.selectbox('Select Batch Key', options=list(adata.obs.columns))
         normalizer = ProteomicNormalizer(st.session_state['norm'], batch_key=batch_key)
@@ -479,54 +669,76 @@ if 'df' in st.session_state:
         renderer.explorer()
 
 
-    st.subheader('statistical tests')
+    st.subheader('statistical tests visualization')
     if  st.checkbox('Perform Wilcoxon Test'):
-        df=make_df_from_anndata(st.session_state['norm'])
-
-        group_column = st.selectbox('Select Group Column', df.columns[-8:])
-        group_values = df[group_column].dropna().unique()
-        group1 = st.selectbox('Select Group 1', group_values)
-        group2 = st.selectbox('Select Group 2', group_values)
-        comparison_variable = st.selectbox('Select Variable for Comparison', df.columns[:proteins])
         
-        def perform_test(data, group_column, group1, group2, variable):
-            group1_data = data[data[group_column] == group1][variable]
-            group2_data = data[data[group_column] == group2][variable]
-            stat, p_value = mannwhitneyu(group1_data, group2_data, alternative='two-sided')
-            return stat, p_value
+        st.title('Data Analysis Visualization Tool')
 
-        if st.button('Perform Wilcoxon Test'):
-            stat, p_value = perform_test(df, group_column, group1, group2, comparison_variable)
-            st.write(f"Statistic: {stat}, P-value: {p_value}")
+        adata_=st.session_state['norm'].copy()
+        
+        tarObs1 = st.selectbox("Select Target Observation 1 (usually the column name of Phenotype like 'Phenotype_TvsN' or 'Phenotype')", adata_.obs.columns)
+        phenotypes = adata_.obs[tarObs1].unique()
+        tarPhenotype = st.selectbox("Select Target Phenotype (will calculate the marker expression only on these cells, or shartest distance from which type of cell (eg: CD8_Tcell))", phenotypes)
+        markers = adata_.var_names  
+        tarMarker = st.selectbox("Select Target Marker (eg:'Ki67') or distance to which specific type of cells (eg: Treg) ", markers)
+        #adata_raw_option = st.checkbox("Use raw data format")
+        
+        # Save functionality
+        save_option = st.checkbox("Save plots?")
+        save_path = st.text_input("Enter save path (e.g., /path/to/save/):") if save_option else None
+        
+        # Button to generate plots
+        if st.button('Generate Plots'):
+            st.write(adata_)
+            with st.spinner('Generating plots...'):
+                shapiro_whitneyU_plot_4in1(adata_, tarObs1, tarPhenotype, tarMarker, adata_raw=None, save=save_path)
+                st.success('Done!')
+                st.balloons()
 
-        if st.button('Show Comparison Plot'):
-            fig, ax = plt.subplots(figsize=(10, 10))
-            # sns.boxplot(x=group_column, y=comparison_variable, data=df[df[group_column].isin([group1, group2])])
-            # sns.swarmplot(x=group_column, y=comparison_variable, data=df[df[group_column].isin([group1, group2])].sample(frac=0.05), color='.25')
-            # Define a color palette that matches the number of groups
-            palette = sns.color_palette("viridis", n_colors=len(df[group_column].unique()))
-            filtered_df = df[df[group_column].isin([group1, group2])]
-            # Create a boxplot
-            boxplot = sns.boxplot(
-                x=group_column,
-                y=comparison_variable,
-                data=filtered_df,
-                palette=palette,  # Apply the color palette
-                width=0.5,  # Control the width of the boxes for better readability
-                showfliers=False  # Do not show outliers to avoid clutter
-            )
+        # group_column = st.selectbox('Select Group Column', df.columns[-8:])
+        # group_values = df[group_column].dropna().unique()
+        # group1 = st.selectbox('Select Group 1', group_values)
+        # group2 = st.selectbox('Select Group 2', group_values)
+        # comparison_variable = st.selectbox('Select Variable for Comparison', df.columns[:proteins])
+        
+        # def perform_test(data, group_column, group1, group2, variable):
+        #     group1_data = data[data[group_column] == group1][variable]
+        #     group2_data = data[data[group_column] == group2][variable]
+        #     stat, p_value = mannwhitneyu(group1_data, group2_data, alternative='two-sided')
+        #     return stat, p_value
 
-            # Overlay a swarmplot with matching colors
-            swarmplot = sns.swarmplot(
-                x=group_column,
-                y=comparison_variable,
-                data=filtered_df.sample(frac=0.05),  # Sample the data to make the swarm plot manageable
-                palette=palette,  # Use the same palette for consistency
-                dodge=False,  # Ensure swarm dots do not overlap the boxplots
-                alpha=0.7  # Set transparency to make the plot less cluttered
-                )
-            plt.title('Comparison of Selected Groups')
-            st.pyplot(fig)
+        # if st.button('Perform Wilcoxon Test'):
+        #     stat, p_value = perform_test(df, group_column, group1, group2, comparison_variable)
+        #     st.write(f"Statistic: {stat}, P-value: {p_value}")
+
+        # if st.button('Show Comparison Plot'):
+        #     fig, ax = plt.subplots(figsize=(10, 10))
+        #     # sns.boxplot(x=group_column, y=comparison_variable, data=df[df[group_column].isin([group1, group2])])
+        #     # sns.swarmplot(x=group_column, y=comparison_variable, data=df[df[group_column].isin([group1, group2])].sample(frac=0.05), color='.25')
+        #     # Define a color palette that matches the number of groups
+        #     palette = sns.color_palette("viridis", n_colors=len(df[group_column].unique()))
+        #     filtered_df = df[df[group_column].isin([group1, group2])]
+        #     # Create a boxplot
+        #     boxplot = sns.boxplot(
+        #         x=group_column,
+        #         y=comparison_variable,
+        #         data=filtered_df,
+        #         palette=palette,  # Apply the color palette
+        #         width=0.5,  # Control the width of the boxes for better readability
+        #         showfliers=False  # Do not show outliers to avoid clutter
+        #     )
+
+        #     # Overlay a swarmplot with matching colors
+        #     swarmplot = sns.swarmplot(
+        #         x=group_column,
+        #         y=comparison_variable,
+        #         data=filtered_df.sample(frac=0.05),  # Sample the data to make the swarm plot manageable
+        #         palette=palette,  # Use the same palette for consistency
+        #         dodge=False,  # Ensure swarm dots do not overlap the boxplots
+        #         alpha=0.7  # Set transparency to make the plot less cluttered
+        #         )
+        #     plt.title('Comparison of Selected Groups')
+        #     st.pyplot(fig)
     
 # Additional functionalities
 if 'df' in st.session_state and st.button('Save data'):
