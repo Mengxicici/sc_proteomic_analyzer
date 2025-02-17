@@ -1,7 +1,7 @@
 anndata==0.09
 matplotlib
 numpy
-pandas==1.2.4
+pandas==2.1
 plotly
 pygwalker==0.4.8
 scanpy
