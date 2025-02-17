@@ -37,8 +37,14 @@ def read_pkl_as_adata(file_path):
 
     
     with open(file_path, 'rb') as file:
+        # Load the h5ad file
+        adata = ad.read_h5ad(file)
         # Load the data from the pkl file
-        adata = pickle.load(file)
+        # adata = pickle.load(file)
+        # try:
+        #     adata = pickle.load(BytesIO(buffer)).copy()
+        # except Exception as e:
+        #     print(f"Unpickling error: {e}")
     print(adata.var_names,'/n',adata.obs.keys())
     return adata
 
