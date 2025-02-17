@@ -1,4 +1,4 @@
-anndata
+anndata==0.09
 matplotlib
 numpy
 pandas
