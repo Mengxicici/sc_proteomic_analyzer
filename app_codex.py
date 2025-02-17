@@ -301,13 +301,14 @@ if st.button('Show App instruction'):
     st.markdown(app_description)
 
 wholeset = st.sidebar.checkbox("Run whole dataset")
-uploaded_file = st.sidebar.file_uploader("Choose a PKL file")
+uploaded_file = st.sidebar.file_uploader("Choose a .h5ad file")
 
 if uploaded_file is not None:
+    adata = ad.read_h5ad(uploaded_file)
     from io import BytesIO
     # Read the file as a binary buffer
-    buffer = uploaded_file.getvalue()
-    adata = pickle.load(BytesIO(buffer)).copy()
+    # buffer = uploaded_file.getvalue()
+    # adata = pickle.load(BytesIO(buffer)).copy()
     st.sidebar.write('Data uploaded Successfully')
 
     def get_subsample(adata):
