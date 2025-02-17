@@ -10,3 +10,4 @@ scipy
 seaborn
 streamlit
 tqdm
+pickle
