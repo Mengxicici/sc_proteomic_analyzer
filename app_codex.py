@@ -329,7 +329,8 @@ if uploaded_file is not None:
     adata.obs['Phenotype'] = adata.obs[celltypes_col]
     adata.obs['Timepoint'] = adata.obs[timepoint_col]
     adata.obs['Response'] = adata.obs[response_col]
-    adata.obs['exp_group'] = adata.obs[response_col].map(str) + '_' + adata.obs[timepoint_col].map(str)
+    #adata.obs['exp_group'] = adata.obs[response_col].cat.codes.astype(str) + '_' + adata.obs[timepoint_col].cat.codes.astype(str)
+
 
     #adata.obs['exp_group'] = adata.obs[response_col] + '_' + adata.obs[timepoint_col]
     proteins = adata.X.shape[1]
