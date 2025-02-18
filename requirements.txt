@@ -3,7 +3,7 @@ matplotlib
 numpy
 pandas
 plotly
-pygwalker==0.4.8
+pygwalker==0.4.9
 scanpy
 scimap
 scipy
