@@ -509,7 +509,10 @@ if 'df' in st.session_state:
             def get_pyg_renderer() -> "StreamlitRenderer":
                 df = make_df_from_anndata(st.session_state['norm'])
                 # If you want to use feature of saving chart config, set `spec_io_mode="rw"`
-                return StreamlitRenderer(df, spec="./gw_config.json", spec_io_mode="rw")
+                return StreamlitRenderer(df, 
+                                         spec="./gw_config.json", 
+                                         #spec_io_mode="rw",
+                                         )
 
 
             renderer = get_pyg_renderer()
