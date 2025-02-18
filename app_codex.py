@@ -505,7 +505,7 @@ if 'df' in st.session_state:
         st.subheader('Data exploration')
         # should cache your pygwalker renderer, if you don't want your memory to explode
         if st.button('Start exploration'):
-            @st.cache_resource
+            #@st.cache_resource
             def get_pyg_renderer() -> "StreamlitRenderer":
                 df = make_df_from_anndata(st.session_state['norm'])
                 # If you want to use feature of saving chart config, set `spec_io_mode="rw"`
